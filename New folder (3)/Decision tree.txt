@@ -1,0 +1,87 @@
+
+  import numpy as np
+
+class Node:
+    def __init__(self, attribute=None, value=None, branches=None, result=None):
+        self.attribute = attribute
+        self.value = value
+        self.branches = branches if branches else {}
+        self.result = result
+
+def entropy(data):
+    if len(data) == 0:
+        return 0
+
+    num_positive = np.sum(data[:, -1])
+    num_negative = len(data) - num_positive
+
+    p_positive = num_positive / len(data)
+    p_negative = num_negative / len(data)
+
+    if p_positive == 0 or p_negative == 0:
+        return 0
+
+    return -p_positive * np.log2(p_positive) - p_negative * np.log2(p_negative)
+
+def information_gain(data, attribute_index):
+    unique_values = np.unique(data[:, attribute_index])
+
+    gain = entropy(data)
+
+    for value in unique_values:
+        subset = data[data[:, attribute_index] == value]
+        gain -= (len(subset) / len(data)) * entropy(subset)
+
+    return gain
+
+def id3(data, attributes):
+    if np.all(data[:, -1] == data[0, -1]):
+        return Node(result=data[0, -1])
+
+    if len(attributes) == 0:
+        return Node(result=np.argmax(np.bincount(data[:, -1].astype(int))))
+
+    best_attribute = max(attributes, key=lambda a: information_gain(data, a))
+    unique_values = np.unique(data[:, best_attribute])
+
+    branches = {}
+    for value in unique_values:
+        subset = data[data[:, best_attribute] == value]
+        new_attributes = [a for a in attributes if a != best_attribute]
+        branches[value] = id3(subset, new_attributes)
+
+    return Node(attribute=best_attribute, branches=branches)
+
+def classify(tree, sample):
+    if tree.result is not None:
+        return tree.result
+
+    value = sample[tree.attribute]
+    if value in tree.branches:
+        return classify(tree.branches[value], sample)
+    else:
+        # If the value is not present in the training set, return a default result
+        return np.argmax(np.bincount(data[:, -1].astype(int)))
+
+# Sample dataset (Boolean attributes for simplicity)
+data = np.array([
+    [True, False, True, True],
+    [False, False, True, False],
+    [True, True, False, True],
+    [False, True, False, False],
+    [True, True, True, True]
+])
+
+# Last column represents the class labels (0 or 1)
+attributes = [0, 1, 2]
+
+# Build the decision tree
+tree = id3(data, attributes)
+
+# Sample new data for classification
+new_sample = np.array([True, False, False])
+
+# Classify the new sample using the decision tree
+classification_result = classify(tree, new_sample)
+print(f"The classification result for the new sample is: {classification_result}")
+
